@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard & Máy Chiếu - MLN122 Group 1</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%3E<text y=%2226%22 font-size=%2224%22>👑</text></svg>">
+</head>
+<body style="background: #080B12;">
+  <!-- Confetti Canvas for Victory Ceremony -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <div class="admin-container">
+
+    <!-- ==================== ADMIN LOGIN MODAL ==================== -->
+    <div id="admin-login-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 15, 25, 0.95); backdrop-filter: blur(10px); z-index: 999; display: flex; align-items: center; justify-content: center;">
+      <div class="glass-card gold-border" style="width: 100%; max-width: 420px; text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 10px;">👑</div>
+        <h2 style="font-size: 1.5rem; margin-bottom: 6px;">ĐĂNG NHẬP ADMIN</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">Dành riêng cho nhóm thuyết trình điều phối máy chiếu</p>
+
+        <div class="input-group">
+          <label class="input-label" for="admin-pass">Mật khẩu Quản trị:</label>
+          <input type="password" id="admin-pass" class="input-field" placeholder="Nhập mật khẩu (mặc định: group1)" value="group1">
+        </div>
+
+        <button id="btn-admin-login" class="btn btn-primary">
+          ĐĂNG NHẬP VÀO DASHBOARD
+        </button>
+
+        <div style="margin-top: 16px;">
+          <a href="/" style="color: var(--text-muted); font-size: 0.8rem; text-decoration: none;">
+            ← Quay lại màn hình Người chơi
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MAIN ADMIN DASHBOARD ==================== -->
+    <div id="admin-dashboard" style="display: none;">
+
+      <!-- TOP CONTROL BAR -->
+      <div class="admin-header">
+        <div>
+          <div class="header-badge">🏛️ FPT University • MLN122 • Group 1 (GD1906)</div>
+          <h1 class="brand-title" style="font-size: 2rem;">
+            ĐIỀU PHỐI GAME: <span>HÀNH TRÌNH GIẢI MÃ THẶNG DƯ</span>
+          </h1>
+          <p class="brand-subtitle">Vốn Nhân Lực Hay Giá Trị Thặng Dư Tinh Vi? (Chủ nghĩa tư bản hiện đại)</p>
+        </div>
+
+        <!-- BIG CLOCK & STATUS -->
+        <div style="display: flex; align-items: center; gap: 20px;">
+          <div style="text-align: right;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">TRẠNG THÁI PHÒNG</div>
+            <div id="admin-game-status" style="font-weight: 900; font-size: 1.2rem; color: var(--accent-gold-bright);">
+              PHÒNG CHỜ (LOBBY)
+            </div>
+          </div>
+
+          <div style="background: rgba(0, 59, 142, 0.4); border: 2px solid var(--accent-gold); border-radius: 16px; padding: 10px 24px; text-align: center;">
+            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">THỜI GIAN CÒN LẠI</div>
+            <div id="admin-timer" style="font-size: 2.4rem; font-weight: 900; color: #FFFFFF; font-variant-numeric: tabular-nums;">
+              05:00
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION BUTTONS TOOLBAR -->
+      <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+        <button id="btn-start-game" class="btn btn-primary" style="width: auto; padding: 12px 28px; font-size: 1.05rem;">
+          🚀 BẮT ĐẦU TRẬN ĐẤU (5 PHÚT)
+        </button>
+        <button id="btn-add-time" class="btn btn-blue" style="width: auto; padding: 12px 20px;">
+          ⏱️ +30 Giây
+        </button>
+        <button id="btn-finish-game" class="btn btn-danger" style="width: auto; padding: 12px 24px;">
+          🏆 Kết Thúc & Vinh Danh Top 1-2-3
+        </button>
+        <button id="btn-reset-game" class="btn btn-secondary" style="width: auto; padding: 12px 20px;">
+          🔄 Reset Vòng Mới
+        </button>
+        <button id="btn-export-csv" class="btn btn-secondary" style="width: auto; padding: 12px 20px;">
+          📊 Tải Bảng Điểm (CSV)
+        </button>
+        <button id="btn-toggle-fullscreen-qr" class="btn btn-blue" style="width: auto; padding: 12px 24px; margin-left: auto;">
+          📱 Phóng To QR Cả Lớp Quét
+        </button>
+      </div>
+
+      <!-- 3-COLUMN LAYOUT -->
+      <div class="admin-grid">
+
+        <!-- COLUMN 1: QR CODE & CONNECTION INFO -->
+        <div>
+          <div class="glass-card gold-border" style="text-align: center;">
+            <div class="header-badge" style="margin-bottom: 12px;">QUÉT QR ĐỂ VÀO CHƠI</div>
+            
+            <div class="qr-preview-box" id="admin-qr-box" title="Bấm để phóng to mã QR">
+              <img id="admin-qr-img" src="" alt="Mã QR tham gia">
+            </div>
+
+            <div style="margin-top: 14px;">
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">LINK THAM GIA:</div>
+              <a id="admin-join-link" href="#" target="_blank" style="color: var(--accent-gold-bright); font-weight: 800; font-size: 0.95rem; word-break: break-all; text-decoration: none;">
+                Đang khởi tạo đường truyền...
+              </a>
+            </div>
+
+            <div style="margin-top: 14px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 10px; text-align: left; font-size: 0.78rem; color: var(--text-secondary);">
+              <div>🌐 <b>Public (4G/Wi-Fi):</b> <span id="admin-public-url">Đang tạo...</span></div>
+              <div style="margin-top: 4px;">🏠 <b>LAN nội bộ:</b> <span id="admin-lan-url">127.0.0.1:3000</span></div>
+            </div>
+
+            <div style="margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <span style="font-size: 1.5rem;">👥</span>
+              <span id="admin-player-counter" style="font-size: 1.3rem; font-weight: 900; color: #FFFFFF;">
+                0
+              </span>
+              <span style="color: var(--text-muted); font-size: 0.9rem;">người đã vào phòng</span>
+            </div>
+          </div>
+
+          <!-- LIVE ACTIVITY FEED -->
+          <div class="glass-card" style="max-height: 300px; overflow-y: auto;">
+            <div style="font-size: 0.78rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;">
+              ⚡ DIỄN BIẾN TRẬN ĐẤU (LIVE FEED)
+            </div>
+            <div id="admin-live-feed" style="display: flex; flex-direction: column; gap: 6px; font-size: 0.8rem;">
+              <div style="color: var(--text-muted);">Đang chờ các thành viên tham gia...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- COLUMN 2: LIVE STAGE RACE TRACK (ĐƯỜNG ĐUA 5 MÀN) -->
+        <div>
+          <div class="glass-card" style="padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+              <h3 style="font-size: 1.1rem; color: #FFFFFF; font-weight: 800;">
+                🏃 ĐƯỜNG ĐUA TIẾN ĐỘ 5 MÀN CHƠI
+              </h3>
+              <span style="font-size: 0.8rem; color: var(--accent-gold);">Cập nhật trực tiếp</span>
+            </div>
+
+            <div class="race-track-grid">
+              <!-- Màn 1 -->
+              <div class="race-stage-col" id="col-stage-1">
+                <div class="race-col-header">
+                  <span>Màn 1: Google</span>
+                  <span class="count-badge" id="count-stage-1">0</span>
+                </div>
+                <div class="race-player-list" id="players-stage-1"></div>
+              </div>
+
+              <!-- Màn 2 -->
+              <div class="race-stage-col" id="col-stage-2">
+                <div class="race-col-header">
+                  <span>Màn 2: C. Mác</span>
+                  <span class="count-badge" id="count-stage-2">0</span>
+                </div>
+                <div class="race-player-list" id="players-stage-2"></div>
+              </div>
+
+              <!-- Màn 3 -->
+              <div class="race-stage-col" id="col-stage-3">
+                <div class="race-col-header">
+                  <span>Màn 3: Big Tech</span>
+                  <span class="count-badge" id="count-stage-3">0</span>
+                </div>
+                <div class="race-player-list" id="players-stage-3"></div>
+              </div>
+
+              <!-- Màn 4 -->
+              <div class="race-stage-col" id="col-stage-4">
+                <div class="race-col-header">
+                  <span>Màn 4: Bẫy Trẻ</span>
+                  <span class="count-badge" id="count-stage-4">0</span>
+                </div>
+                <div class="race-player-list" id="players-stage-4"></div>
+              </div>
+
+              <!-- Màn 5 -->
+              <div class="race-stage-col" id="col-stage-5">
+                <div class="race-col-header">
+                  <span>Màn 5: Tỉnh Táo</span>
+                  <span class="count-badge" id="count-stage-5">0</span>
+                </div>
+                <div class="race-player-list" id="players-stage-5"></div>
+              </div>
+
+              <!-- Đã về đích -->
+              <div class="race-stage-col" id="col-stage-finished" style="border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.05);">
+                <div class="race-col-header" style="color: var(--success);">
+                  <span>🏆 VỀ ĐÍCH</span>
+                  <span class="count-badge" id="count-stage-finished" style="color: var(--success);">0</span>
+                </div>
+                <div class="race-player-list" id="players-stage-finished"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- COLUMN 3: REALTIME LEADERBOARD -->
+        <div>
+          <div class="glass-card gold-border">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+              <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--accent-gold-bright);">
+                🏆 BẢNG XẾP HẠNG TOP ĐẦU
+              </h3>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Trao bánh kẹo</span>
+            </div>
+
+            <div style="max-height: 550px; overflow-y: auto;">
+              <table class="leaderboard-table">
+                <thead>
+                  <tr>
+                    <th>Hạng</th>
+                    <th>Người chơi</th>
+                    <th>Màn</th>
+                    <th style="text-align: right;">Điểm</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="admin-leaderboard-tbody">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ==================== FULLSCREEN QR MODAL ==================== -->
+    <div id="fullscreen-qr-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 15, 25, 0.98); backdrop-filter: blur(20px); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 30px;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <div class="header-badge" style="font-size: 1.1rem; padding: 8px 24px;">🏛️ QUÉT MÃ QR BẰNG CAMERA ĐIỆN THOẠI ĐỂ VÀO PHÒNG</div>
+        <h1 class="brand-title" style="font-size: 2.8rem; margin: 12px 0;">
+          HÀNH TRÌNH <span>GIẢI MÃ THẶNG DƯ</span>
+        </h1>
+        <p style="color: var(--text-secondary); font-size: 1.2rem;">
+          Tất cả mọi người dùng 4G hoặc Wi-Fi trường đều quét vào được ngay!
+        </p>
+      </div>
+
+      <div style="background: #FFFFFF; padding: 24px; border-radius: 28px; box-shadow: 0 0 50px rgba(255, 234, 0, 0.4); margin-bottom: 24px;">
+        <img id="fullscreen-qr-img" src="" alt="Mã QR khổng lồ" style="width: 380px; height: 380px; display: block;">
+      </div>
+
+      <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-gold-bright); margin-bottom: 24px;" id="fullscreen-qr-url">
+        Đang tải link...
+      </div>
+
+      <button id="btn-close-fullscreen-qr" class="btn btn-primary" style="width: auto; padding: 14px 40px; font-size: 1.1rem;">
+        ĐÓNG MÃ QR & QUAY LẠI BẢNG ĐIỀU PHỐI ➔
+      </button>
+    </div>
+
+    <!-- ==================== PODIUM CEREMONY MODAL ==================== -->
+    <div id="podium-modal" class="podium-modal" style="display: none;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <div class="header-badge" style="font-size: 1rem; padding: 6px 20px;">🎉 KẾT THÚC VÒNG ĐUA</div>
+        <h1 style="font-size: 2.8rem; font-weight: 900; color: #FFFFFF; margin: 8px 0;">
+          LỄ TRAO THƯỞNG <span>BÁNH KẸO</span> 🍬
+        </h1>
+        <p style="color: var(--text-secondary); font-size: 1.1rem;">
+          Vinh danh những gương mặt xuất sắc giải mã bản chất Kinh tế Chính trị Mác - Lênin!
+        </p>
+      </div>
+
+      <!-- 3 PODIUM PILLARS -->
+      <div class="podium-stage" id="podium-stage">
+        <!-- 2nd Place -->
+        <div class="podium-pillar rank-2" id="pillar-rank-2">
+          <div style="font-size: 2.5rem;" id="podium-avatar-2">🥈</div>
+          <div style="font-weight: 800; font-size: 1.1rem; color: #E2E8F0; margin: 6px 0;" id="podium-name-2">-</div>
+          <div style="font-weight: 900; font-size: 1.3rem; color: #FFFFFF;" id="podium-score-2">0đ</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;" id="podium-sub-2">Top 2</div>
+        </div>
+
+        <!-- 1st Place (Center, Tallest) -->
+        <div class="podium-pillar rank-1" id="pillar-rank-1">
+          <div style="font-size: 3.5rem;" id="podium-avatar-1">👑</div>
+          <div style="font-weight: 900; font-size: 1.35rem; color: var(--accent-gold-bright); margin: 6px 0;" id="podium-name-1">-</div>
+          <div style="font-weight: 900; font-size: 1.6rem; color: #FFFFFF;" id="podium-score-1">0đ</div>
+          <div style="font-size: 0.85rem; color: var(--accent-gold); font-weight: 800; margin-top: 4px;" id="podium-sub-1">🏆 QUÁN QUÂN</div>
+        </div>
+
+        <!-- 3rd Place -->
+        <div class="podium-pillar rank-3" id="pillar-rank-3">
+          <div style="font-size: 2.5rem;" id="podium-avatar-3">🥉</div>
+          <div style="font-weight: 800; font-size: 1.1rem; color: #CD7F32; margin: 6px 0;" id="podium-name-3">-</div>
+          <div style="font-weight: 900; font-size: 1.3rem; color: #FFFFFF;" id="podium-score-3">0đ</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;" id="podium-sub-3">Top 3</div>
+        </div>
+      </div>
+
+      <!-- TOP 4-10 HONOR LIST -->
+      <div style="width: 100%; max-width: 700px; background: rgba(0,0,0,0.5); border-radius: 16px; padding: 14px 20px; margin-bottom: 20px;">
+        <div style="font-size: 0.8rem; font-weight: 800; color: var(--accent-gold); margin-bottom: 8px;">
+          DANH SÁCH TOP 4 - TOP 10 NHẬN QUÀ KHUYẾN KHÍCH:
+        </div>
+        <div id="podium-honor-list" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 0.85rem;">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 14px;">
+        <button id="btn-close-podium" class="btn btn-secondary" style="width: auto; padding: 12px 28px;">
+          Đóng Màn Hình Vinh Danh
+        </button>
+        <button id="btn-podium-reset" class="btn btn-primary" style="width: auto; padding: 12px 32px;">
+          🔄 Bắt Đầu Vòng Chơi Mới
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/audio.js"></script>
+  <script src="/admin.js"></script>
+</body>
+</html>

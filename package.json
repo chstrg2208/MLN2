@@ -1,0 +1,19 @@
+{
+  "name": "mln122-game-thang-du",
+  "version": "1.0.0",
+  "description": "Game thuyết trình MLN122 - Vốn nhân lực hay Giá trị thặng dư tinh vi (Group 1 - GD1906)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "qrcode": "^1.5.3",
+    "socket.io": "^4.7.5",
+    "untun": "^0.2.2"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
+  }
+}

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#060913">
+  <title>MLN122 • Đấu Trường Giải Mã Thặng Dư</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23FFE600%22><path d=%22M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z%22/></svg>">
+</head>
+<body>
+  <main class="app-container">
+
+    <!-- ==================== SCREEN 1: JOIN / CLASS SELECTION ==================== -->
+    <section id="screen-join" class="surface-panel gold-accent">
+      <header class="hero-header">
+        <h1 class="brand-title">
+          ĐẤU TRƯỜNG
+          <span class="highlight">GIẢI MÃ THẶNG DƯ</span>
+        </h1>
+        <p class="brand-serif-sub">Vốn nhân lực hay Giá trị thặng dư tinh vi?</p>
+        <p class="brand-meta-foot">FPT University • MLN122 • GD1906 • Group 1</p>
+      </header>
+
+      <div class="input-group">
+        <label class="input-label" for="player-nickname">Họ tên hoặc Biệt danh thi đấu</label>
+        <input type="text" id="player-nickname" class="input-field" placeholder="Ví dụ: Hoàng Anh K19, Thảo GD..." maxlength="25" autocomplete="off">
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Chọn Hình mẫu Nhân sự (Class)</label>
+        <div class="avatar-grid" id="avatar-grid">
+          <!-- Populated by player.js -->
+        </div>
+      </div>
+
+      <button id="btn-join" class="btn btn-primary" type="button">
+        <svg class="icon-svg" viewBox="0 0 24 24">
+          <polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none"></polygon>
+        </svg>
+        <span>VÀO ĐẤU TRƯỜNG</span>
+      </button>
+
+      <footer style="margin-top: 16px; text-align: center;">
+        <a href="/admin.html" style="color: var(--text-muted); font-size: 0.78rem; font-weight: 600; text-decoration: none;">
+          Màn hình Điều phối &amp; Máy chiếu (Admin) ➔
+        </a>
+      </footer>
+    </section>
+
+    <!-- ==================== SCREEN 2: LOBBY WAITING ROOM ==================== -->
+    <section id="screen-lobby" class="surface-panel" style="display: none; text-align: center;">
+      <div id="lobby-player-avatar" style="width: 64px; height: 64px; margin: 0 auto 10px; border-radius: 16px; background: var(--cobalt-800); border: 1.5px solid var(--gold-400); display: flex; align-items: center; justify-content: center; font-size: 2rem;"></div>
+      <h2 id="lobby-player-name" style="font-size: 1.35rem; font-weight: 900; margin-bottom: 4px;">Chiến Binh</h2>
+      <p style="color: var(--gold-400); font-size: 0.86rem; font-weight: 600; margin-bottom: 16px;">
+        Đã kết nối — Đang chờ Admin bấm Bắt đầu trên máy chiếu...
+      </p>
+
+      <div style="background: var(--cobalt-950); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 14px; margin-bottom: 16px; text-align: left;">
+        <h3 style="color: var(--gold-400); font-size: 0.8rem; font-weight: 800; text-transform: uppercase; margin-bottom: 8px;">
+          Cơ chế Sinh tồn 5 Tầng Tháp (5 Phút)
+        </h3>
+        <ul style="color: var(--text-secondary); font-size: 0.8rem; line-height: 1.55; padding-left: 16px;">
+          <li><b>Di chuyển &amp; Tự động bắn:</b> Kéo <b>Joystick bên trái</b> (hoặc chạm nửa trái đấu trường). Nhân vật tự khóa mục tiêu gần nhất.</li>
+          <li><b>3 Kỹ năng Chiến đấu:</b>
+            <br>• <b>Lướt Né (Dash):</b> Vọt qua mưa đạn &amp; tia laser (bất tử 0.45s).
+            <br>• <b>Đạn Chùm (Overdrive):</b> Bắn 3 tia tốc độ gấp đôi trong 3.6s.
+            <br>• <b>Phá Đạn (EMP):</b> Xóa sạch đạn của Boss quanh người &amp; hồi +12 HP.</li>
+          <li><b>Phá 3 Khiên Boss (12s/câu):</b> Trả lời đúng phá khiên Boss. <span style="color: var(--crimson-400); font-weight: 700;">Trả lời SAI bị trừ 250đ &amp; Boss nổi giận bắn mưa đạn 6 giây!</span></li>
+        </ul>
+      </div>
+
+      <div style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--cobalt-950); border-radius: 999px; border: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 0.8rem; font-weight: 700;">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--emerald-400);"></span>
+        <span id="lobby-player-count" class="tabular-nums">0 chiến binh trong phòng</span>
+      </div>
+    </section>
+
+    <!-- ==================== SCREEN 3: 60FPS MOBILE ACTION ARENA ==================== -->
+    <section id="screen-game" style="display: none;">
+      <!-- COMPACT TOP TELEMETRY -->
+      <div class="status-bar">
+        <div class="stat-item">
+          <span class="stat-label">ĐIỂM SỐ</span>
+          <span class="stat-value gold tabular-nums" id="game-score">0</span>
+        </div>
+
+        <div class="timer-box" id="game-timer-box">
+          <svg class="icon-svg" style="width: 15px; height: 15px; color: var(--gold-400);" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"></circle>
+            <polyline points="12 7 12 12 15 15"></polyline>
+          </svg>
+          <span id="game-timer" class="tabular-nums" style="font-weight: 900; font-size: 1rem;">05:00</span>
+        </div>
+
+        <div class="stat-item" style="text-align: right;">
+          <span class="stat-label">COMBO</span>
+          <span class="stat-value tabular-nums" id="game-streak" style="color: var(--gold-500);">x0</span>
+        </div>
+      </div>
+
+      <!-- 5-STAGE PROGRESS NODES -->
+      <div class="stage-pills" id="stage-pills">
+        <div class="stage-pill active"></div>
+        <div class="stage-pill"></div>
+        <div class="stage-pill"></div>
+        <div class="stage-pill"></div>
+        <div class="stage-pill"></div>
+      </div>
+
+      <!-- DUAL COMBAT BARS: HP & BOSS SHIELD -->
+      <div class="combat-hud-bar">
+        <div class="hud-meter-box">
+          <div class="hud-meter-header">
+            <span style="color: var(--emerald-400);">SỨC BỀN (HP)</span>
+            <span id="hud-hp-text" class="tabular-nums" style="color: var(--text-primary);">100/100</span>
+          </div>
+          <div class="hud-bar-track">
+            <div id="hud-hp-fill" class="hud-bar-fill hp" style="width: 100%;"></div>
+          </div>
+        </div>
+
+        <div class="hud-meter-box">
+          <div class="hud-meter-header">
+            <span id="hud-boss-label" style="color: var(--gold-400); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">NĂNG LƯỢNG TẦNG 1</span>
+            <div class="shield-gems" id="hud-shield-gems" title="3 Lớp Khiên Boss">
+              <span class="shield-gem"></span>
+              <span class="shield-gem"></span>
+              <span class="shield-gem"></span>
+            </div>
+          </div>
+          <div class="hud-bar-track">
+            <div id="hud-boss-fill" class="hud-bar-fill boss" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FLEXIBLE 60FPS ARENA CANVAS -->
+      <div class="arena-wrapper" id="arena-wrapper">
+        <canvas id="arena-canvas" width="600" height="450"></canvas>
+
+        <!-- ENRAGE WARNING BANNER -->
+        <div id="enrage-banner" class="enrage-banner" style="display: none;">
+          CƠN THỊNH NỘ CỦA BOSS! LƯỚT NÉ MƯA ĐẠN TRONG <span id="enrage-timer-num" class="tabular-nums">6.0</span>s!
+        </div>
+
+        <!-- STAGE BRIEFING OVERLAY -->
+        <div id="stage-briefing-overlay" class="stage-briefing-overlay">
+          <div id="brief-boss-icon" style="width: 56px; height: 56px; border-radius: 16px; background: var(--cobalt-800); border: 1.5px solid var(--gold-400); display: flex; align-items: center; justify-content: center; font-size: 1.9rem; margin-bottom: 10px;"></div>
+          <h2 id="brief-stage-title" style="font-size: 1.22rem; font-weight: 900; color: var(--text-primary); margin-bottom: 4px;">
+            Tầng 1: Mê Cung Phúc Lợi Big Tech
+          </h2>
+          <p id="brief-boss-name" style="font-size: 0.78rem; font-weight: 800; color: var(--gold-400); margin-bottom: 4px;">
+            BOSS: AI QUẢN TRỊ PEOPLE ANALYTICS
+          </p>
+          <p id="brief-stage-tag" style="font-size: 0.72rem; font-weight: 600; color: var(--cobalt-400); margin-bottom: 10px;">
+            Tầng 1 / 5 • Slide 02 - 04
+          </p>
+          <p id="brief-hazard-desc" style="font-size: 0.8rem; color: var(--text-secondary); max-width: 400px; line-height: 1.45; margin-bottom: 16px;">
+            Né xe Google Shuttle phóng ngang tốc độ cao &amp; bắn hạ Ma Sát Sinh Hoạt!
+          </p>
+          <button id="btn-enter-stage" class="btn btn-primary" type="button" style="max-width: 260px;">
+            <svg class="icon-svg" viewBox="0 0 24 24">
+              <polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none"></polygon>
+            </svg>
+            <span>XÔNG VÀO TẦNG 1</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ERGONOMIC THUMB CONTROLLER DECK -->
+      <div class="controls-deck">
+        <div class="joystick-zone" id="joystick-zone" aria-label="Cần điều khiển di chuyển 360 độ">
+          <div class="joystick-base" id="joystick-base">
+            <div class="joystick-stick" id="joystick-stick"></div>
+          </div>
+        </div>
+
+        <div class="skills-cluster">
+          <button class="skill-btn dash" id="btn-skill-dash" type="button">
+            <div class="skill-cooldown-overlay" id="cd-dash"></div>
+            <div class="skill-svg-badge">
+              <svg class="icon-svg" viewBox="0 0 24 24">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor" stroke="none"></polygon>
+              </svg>
+            </div>
+            <span class="skill-name">Lướt Né</span>
+            <span class="skill-key">[Space]</span>
+          </button>
+
+          <button class="skill-btn overdrive" id="btn-skill-overdrive" type="button">
+            <div class="skill-cooldown-overlay" id="cd-overdrive"></div>
+            <div class="skill-svg-badge">
+              <svg class="icon-svg" viewBox="0 0 24 24">
+                <path d="M12 2L15 9L22 9L16.5 13.5L18.5 21L12 16.5L5.5 21L7.5 13.5L2 9L9 9Z" fill="currentColor" stroke="none"></path>
+              </svg>
+            </div>
+            <span class="skill-name">Đạn Chùm</span>
+            <span class="skill-key">[Phím J]</span>
+          </button>
+
+          <button class="skill-btn emp" id="btn-skill-emp" type="button">
+            <div class="skill-cooldown-overlay" id="cd-emp"></div>
+            <div class="skill-svg-badge">
+              <svg class="icon-svg" viewBox="0 0 24 24">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+            </div>
+            <span class="skill-name">Phá Đạn</span>
+            <span class="skill-key">[Phím K]</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== BOSS SHIELD QUIZ DRAWER ==================== -->
+    <div id="boss-quiz-overlay" class="boss-quiz-overlay" style="display: none;">
+      <div class="boss-quiz-card">
+        <div class="question-meta">
+          <span id="quiz-badge" style="font-size: 0.78rem; font-weight: 800; color: var(--gold-400); text-transform: uppercase;">
+            PHÁ KHIÊN BOSS 1 / 3
+          </span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="slide-tag" id="quiz-slide-ref">Slide 03/18</span>
+            <span id="quiz-countdown-badge" class="tabular-nums" style="font-weight: 900; font-size: 0.88rem; color: var(--gold-400);">12s</span>
+          </div>
+        </div>
+
+        <div class="q-timer-track">
+          <div id="q-timer-fill" class="q-timer-fill" style="width: 100%;"></div>
+        </div>
+
+        <p class="question-text" id="quiz-question-text">
+          Đang tải câu hỏi phá khiên Boss...
+        </p>
+
+        <div class="options-list" id="quiz-options-list">
+          <!-- Populated by player.js -->
+        </div>
+
+        <div class="explanation-box" id="quiz-explanation-box" style="display: none;">
+          <!-- Slide explanation appears here -->
+        </div>
+
+        <button id="btn-next-question" class="btn btn-primary" type="button" style="display: none;">
+          TIẾP TỤC CHIẾN ĐẤU
+        </button>
+      </div>
+    </div>
+
+    <!-- ==================== SCREEN 4: VICTORY / FINISH ==================== -->
+    <section id="screen-finish" class="surface-panel gold-accent" style="display: none; text-align: center;">
+      <div style="width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 16px; background: rgba(255, 230, 0, 0.16); border: 1.5px solid var(--gold-400); display: flex; align-items: center; justify-content: center; color: var(--gold-400);">
+        <svg class="icon-svg" style="width: 34px; height: 34px;" viewBox="0 0 24 24">
+          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+          <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+          <path d="M4 22h16"></path>
+          <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+          <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+          <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+        </svg>
+      </div>
+
+      <h2 style="font-size: 1.5rem; font-weight: 900; margin-bottom: 6px;">PHÁ ĐẢO 5 TẦNG THÁP!</h2>
+      <p style="color: var(--text-secondary); font-size: 0.86rem; margin-bottom: 18px;">
+        Bạn đã làm chủ lý luận Kinh tế Chính trị Mác - Lênin và vượt qua mọi cạm bẫy bóc lột tinh vi!
+      </p>
+
+      <div style="background: var(--cobalt-950); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 16px; margin-bottom: 18px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; text-align: center;">
+          <div>
+            <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">TỔNG ĐIỂM</div>
+            <div class="tabular-nums" style="font-size: 1.65rem; font-weight: 900; color: var(--gold-400);" id="finish-score">0</div>
+          </div>
+          <div>
+            <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">PHÁ KHIÊN ĐÚNG</div>
+            <div class="tabular-nums" style="font-size: 1.65rem; font-weight: 900; color: var(--emerald-400);" id="finish-correct">0 / 15</div>
+          </div>
+          <div>
+            <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">CHUỖI COMBO</div>
+            <div class="tabular-nums" style="font-size: 1.4rem; font-weight: 800; color: var(--gold-500);" id="finish-streak">x0</div>
+          </div>
+          <div>
+            <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">THỜI GIAN</div>
+            <div class="tabular-nums" style="font-size: 1.4rem; font-weight: 800; color: var(--cobalt-400);" id="finish-time">0m 00s</div>
+          </div>
+        </div>
+      </div>
+
+      <p style="color: var(--gold-400); font-size: 0.9rem; font-weight: 700;">
+        Hãy nhìn lên màn hình máy chiếu của nhóm để xem Vinh Danh Top Nhận Bánh Kẹo!
+      </p>
+    </section>
+
+  </main>
+
+  <button id="btn-mute" class="mute-fab" type="button" aria-label="Tắt âm thanh"></button>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/audio.js"></script>
+  <script src="/graphics.js"></script>
+  <script src="/player.js"></script>
+</body>
+</html>
