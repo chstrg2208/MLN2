@@ -260,6 +260,18 @@
     });
   });
 
+  socket.on('connect', () => {
+    const savedName = localStorage.getItem('mln_player_name');
+    const savedClientId = localStorage.getItem('mln_client_id');
+    if (savedName && savedClientId && myPlayer) {
+      socket.emit('player:join', {
+        clientId: savedClientId,
+        nickname: savedName,
+        avatarId: (myPlayer.avatar && myPlayer.avatar.id) ? myPlayer.avatar.id : selectedAvatarId
+      });
+    }
+  });
+
   socket.on('player:joined', ({ player, gameState, stages }) => {
     myPlayer = player;
     stagesData = stages;
@@ -537,9 +549,11 @@
 
   function updateTopBar() {
     if (!myPlayer) return;
-    gameScore.textContent = myPlayer.score.toLocaleString();
-    gameStreak.textContent = `x${myPlayer.streak}`;
-    gameStreak.style.color = myPlayer.streak >= 2 ? '#FFE600' : '#FACC15';
+    const score = (typeof myPlayer.score === 'number') ? myPlayer.score : 0;
+    gameScore.textContent = score.toLocaleString();
+    const streak = (typeof myPlayer.streak === 'number') ? myPlayer.streak : 0;
+    gameStreak.textContent = `x${streak}`;
+    gameStreak.style.color = streak >= 2 ? '#FFE600' : '#FACC15';
 
     const pills = stagePills.querySelectorAll('.stage-pill');
     pills.forEach((p, idx) => {
@@ -550,8 +564,10 @@
   }
 
   function updateCombatHud() {
-    const hpPct = Math.max(0, Math.min(100, (hero.hp / hero.maxHp) * 100));
-    hudHpText.textContent = `${Math.ceil(hero.hp)}/${hero.maxHp}`;
+    const hp = (typeof hero.hp === 'number') ? hero.hp : 100;
+    const maxHp = hero.maxHp || 100;
+    const hpPct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
+    hudHpText.textContent = `${Math.ceil(hp)}/${maxHp}`;
     hudHpFill.style.width = `${hpPct}%`;
     if (hpPct <= 35) hudHpFill.classList.add('low');
     else hudHpFill.classList.remove('low');
@@ -564,7 +580,9 @@
       hudBossFill.style.width = `${Math.min(100, waveEnergy)}%`;
     } else {
       hudBossLabel.textContent = stage.bossName;
-      const bossPct = Math.max(0, Math.min(100, (boss.hp / boss.maxHp) * 100));
+      const bHp = (typeof boss.hp === 'number') ? boss.hp : 100;
+      const bMax = boss.maxHp || 100;
+      const bossPct = Math.max(0, Math.min(100, (bHp / bMax) * 100));
       hudBossFill.style.width = `${bossPct}%`;
     }
 
@@ -725,6 +743,7 @@
       updateBossBehavior(stage, dt, true);
 
       if (enrageTimeLeft <= 0) {
+        combatPhase = 'BOSS_ENRAGE_RESOLVED';
         enrageBanner.style.display = 'none';
         arenaWrapper.classList.remove('enrage-border');
         enemyBullets = [];
@@ -1039,6 +1058,7 @@
   }
 
   function spawnStageBoss() {
+    combatPhase = 'BOSS_INTRO';
     window.soundFx.bossSpawn();
     window.soundFx.setMusic('boss', currentStageIndex);
     haptic(35);
@@ -1056,13 +1076,15 @@
     updateCombatHud();
 
     const stage = stagesData[currentStageIndex];
+    const myClientId = localStorage.getItem('mln_client_id');
     socket.emit('player:minigame_finish', {
-      stageId: stage.id,
+      clientId: myClientId,
+      stageId: stage ? stage.id : 1,
       score: Math.min(600, waveScoreEarned + Math.round(hero.hp * 2)),
       hpRemaining: hero.hp
     });
 
-    addFloatingText(W / 2, H / 2, `BOSS XUẤT HIỆN: ${stage.bossName}!`, '#FFE600');
+    addFloatingText(W / 2, H / 2, `BOSS XUẤT HIỆN: ${stage ? stage.bossName : 'BOSS'}!`, '#FFE600');
 
     setTimeout(() => {
       currentQuestionIndex = 0;
@@ -1127,7 +1149,8 @@
     window.soundFx.burnout();
     haptic(60);
     const stage = stagesData[currentStageIndex];
-    socket.emit('player:burnout', { stageId: stage ? stage.id : 1 });
+    const myClientId = localStorage.getItem('mln_client_id');
+    socket.emit('player:burnout', { clientId: myClientId, stageId: stage ? stage.id : 1 });
 
     hero.hp = 100;
     hero.stunTimer = 1.6;
@@ -1141,6 +1164,7 @@
   // ==================== BOSS SHIELD QUIZ & ENRAGE PENALTY ====================
   function openBossQuizModal() {
     const stage = stagesData[currentStageIndex];
+    if (!stage) return;
     const question = stage.questions[currentQuestionIndex];
     if (!question) return;
 
@@ -1148,6 +1172,9 @@
     window.soundFx.setMusic('quiz', currentStageIndex);
     hasAnsweredCurrentQuestion = false;
     questionStartTime = Date.now();
+
+    const activeStageId = stage.id;
+    const activeQuestionId = question.id;
 
     quizBadge.textContent = `PHÁ LỚP KHIÊN BOSS ${currentQuestionIndex + 1} / 3 (TẦNG ${stage.id})`;
     quizSlideRef.textContent = stage.slideRef;
@@ -1160,22 +1187,32 @@
     quizOptionsList.innerHTML = question.options.map((opt, idx) => `
       <button class="option-btn" type="button" data-index="${idx}">
         <span class="opt-badge">${badges[idx]}</span>
-        <span>${opt}</span>
+        <span class="opt-text">${opt}</span>
       </button>
     `).join('');
 
     quizOptionsList.querySelectorAll('.option-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      const handleSelect = (e) => {
+        if (e && e.type === 'touchstart') e.preventDefault();
         if (hasAnsweredCurrentQuestion) return;
-        haptic(10);
-        submitQuizAnswer(parseInt(btn.getAttribute('data-index'), 10), btn);
-      });
+        haptic(12);
+
+        btn.classList.add('selected');
+        quizOptionsList.querySelectorAll('.option-btn').forEach(b => {
+          if (b !== btn) b.classList.add('dimmed');
+        });
+
+        submitQuizAnswer(parseInt(btn.getAttribute('data-index'), 10), btn, activeStageId, activeQuestionId);
+      };
+
+      btn.addEventListener('click', handleSelect);
+      btn.addEventListener('touchstart', handleSelect, { passive: false });
     });
 
-    startQuestionTimer(question.timeLimit || 12);
+    startQuestionTimer(question.timeLimit || 12, activeStageId, activeQuestionId);
   }
 
-  function startQuestionTimer(limitSec) {
+  function startQuestionTimer(limitSec, stageId, questionId) {
     clearQuestionTimer();
     let remainingMs = limitSec * 1000;
     const totalMs = remainingMs;
@@ -1196,7 +1233,7 @@
       if (remainingMs <= 0) {
         clearQuestionTimer();
         if (!hasAnsweredCurrentQuestion) {
-          submitQuizAnswer(-1, null);
+          submitQuizAnswer(-1, null, stageId, questionId);
         }
       }
     }, 100);
@@ -1209,38 +1246,43 @@
     }
   }
 
-  function submitQuizAnswer(selectedIndex, clickedBtn) {
+  function submitQuizAnswer(selectedIndex, clickedBtn, stageId, questionId) {
     hasAnsweredCurrentQuestion = true;
     clearQuestionTimer();
 
     const stage = stagesData[currentStageIndex];
-    const question = stage.questions[currentQuestionIndex];
+    const effectiveStageId = stageId || (stage ? stage.id : 1);
+    const effectiveQuestionId = questionId || (stage && stage.questions[currentQuestionIndex] ? stage.questions[currentQuestionIndex].id : 'q1_1');
     const timeTaken = (Date.now() - questionStartTime) / 1000;
 
     if (clickedBtn) {
       clickedBtn.dataset.chosen = 'true';
     }
 
+    const myClientId = localStorage.getItem('mln_client_id');
+
     socket.emit('player:submit_answer', {
-      stageId: stage.id,
-      questionId: question.id,
+      clientId: myClientId,
+      stageId: effectiveStageId,
+      questionId: effectiveQuestionId,
       selectedIndex,
       timeTakenSec: timeTaken
     });
   }
 
-  socket.on('player:answer_result', ({ isCorrect, correctIndex, explanation, pointsEarned, currentScore, streak }) => {
+  socket.on('player:answer_result', ({ isCorrect, correctIndex, explanation, pointsEarned, currentScore, streak, alreadyAnswered }) => {
     if (myPlayer) {
-      myPlayer.score = currentScore;
-      myPlayer.streak = streak;
+      if (typeof currentScore === 'number') myPlayer.score = currentScore;
+      if (typeof streak === 'number') myPlayer.streak = streak;
       if (isCorrect) myPlayer.answersCorrect = (myPlayer.answersCorrect || 0) + 1;
-      if (streak > (myPlayer.maxStreak || 0)) myPlayer.maxStreak = streak;
+      if (typeof streak === 'number' && streak > (myPlayer.maxStreak || 0)) myPlayer.maxStreak = streak;
     }
     updateTopBar();
 
     const buttons = quizOptionsList.querySelectorAll('.option-btn');
     buttons.forEach((btn, idx) => {
       btn.disabled = true;
+      btn.classList.remove('selected', 'dimmed');
       if (idx === correctIndex) {
         btn.classList.add('correct');
       } else if (btn.dataset.chosen === 'true') {
@@ -1258,9 +1300,9 @@
 
       quizExplanationBox.innerHTML = `
         <div style="font-weight: 800; color: #34D399; margin-bottom: 4px;">
-          PHÁ VỠ LỚP KHIÊN BOSS! (+${pointsEarned} điểm • Hồi +20 HP)
+          PHÁ VỠ LỚP KHIÊN BOSS! (+${pointsEarned || 0} điểm • Hồi +20 HP)
         </div>
-        <div>${explanation}</div>
+        <div>${explanation || ''}</div>
       `;
       quizExplanationBox.style.display = 'block';
 
@@ -1283,11 +1325,12 @@
     } else {
       window.soundFx.bossEnrage();
       haptic(50);
+      const safeBadge = ['A', 'B', 'C', 'D'][correctIndex] || 'Đáp án';
       quizExplanationBox.innerHTML = `
         <div style="font-weight: 800; color: #F87171; margin-bottom: 4px;">
-          TRẢ LỜI SAI! BỊ PHẠT ${pointsEarned} ĐIỂM &amp; MẤT COMBO!
+          TRẢ LỜI SAI! BỊ PHẠT ${pointsEarned || -250} ĐIỂM &amp; MẤT COMBO!
         </div>
-        <div style="margin-bottom: 6px;"><b>Đáp án đúng là ${['A', 'B', 'C', 'D'][correctIndex]}:</b> ${explanation}</div>
+        <div style="margin-bottom: 6px;"><b>Đáp án đúng là ${safeBadge}:</b> ${explanation || ''}</div>
         <div style="color: #FFE600; font-weight: 700;">
           CẢNH BÁO: Boss đang nổi giận! Hãy chuẩn bị LƯỚT NÉ mưa đạn trong 6 giây!
         </div>
@@ -1304,6 +1347,10 @@
         startBossEnragePhase();
       };
     }
+
+    try {
+      btnNextQuestion.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (e) {}
   });
 
   function startBossEnragePhase() {
@@ -1334,7 +1381,9 @@
     combatPhase = 'BRIEFING';
 
     const stage = stagesData[currentStageIndex];
+    const myClientId = localStorage.getItem('mln_client_id');
     socket.emit('player:advance_stage', {
+      clientId: myClientId,
       fromStage: stage.id,
       bossKillBonus: 350 + Math.round(hero.hp * 1.5)
     });

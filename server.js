@@ -295,10 +295,12 @@ io.on('connection', (socket) => {
   });
 
   // Hoàn thành Wave diệt quái / kết liễu Boss của 1 tầng
-  socket.on('player:minigame_finish', ({ stageId, score, hpRemaining }) => {
-    const playerId = socketToPlayer.get(socket.id);
-    const player = players.get(playerId);
-    if (!player || gameState !== 'PLAYING') return;
+  socket.on('player:minigame_finish', ({ stageId, score, hpRemaining, clientId }) => {
+    let playerId = socketToPlayer.get(socket.id) || clientId;
+    let player = players.get(playerId);
+    if (!player) return;
+    if (clientId && !socketToPlayer.has(socket.id)) socketToPlayer.set(socket.id, clientId);
+    if (gameState !== 'PLAYING') return;
 
     const validScore = Math.max(0, Math.min(score || 0, 800));
     player.score += validScore;
@@ -320,10 +322,12 @@ io.on('connection', (socket) => {
   });
 
   // Người chơi bị BURNOUT (HP về 0 do trúng mưa đạn)
-  socket.on('player:burnout', ({ stageId }) => {
-    const playerId = socketToPlayer.get(socket.id);
-    const player = players.get(playerId);
-    if (!player || gameState !== 'PLAYING') return;
+  socket.on('player:burnout', ({ stageId, clientId }) => {
+    let playerId = socketToPlayer.get(socket.id) || clientId;
+    let player = players.get(playerId);
+    if (!player) return;
+    if (clientId && !socketToPlayer.has(socket.id)) socketToPlayer.set(socket.id, clientId);
+    if (gameState !== 'PLAYING') return;
 
     const penalty = 300;
     player.score = Math.max(0, player.score - penalty);
@@ -345,10 +349,17 @@ io.on('connection', (socket) => {
   });
 
   // Trả lời câu hỏi phá Khiên Boss (Có phạt thật khi trả lời SAI hoặc Hết giờ!)
-  socket.on('player:submit_answer', ({ stageId, questionId, selectedIndex, timeTakenSec }) => {
-    const playerId = socketToPlayer.get(socket.id);
-    const player = players.get(playerId);
-    if (!player || gameState !== 'PLAYING') return;
+  socket.on('player:submit_answer', ({ stageId, questionId, selectedIndex, timeTakenSec, clientId }) => {
+    let playerId = socketToPlayer.get(socket.id) || clientId;
+    let player = players.get(playerId);
+    if (!player) return;
+    if (clientId && !socketToPlayer.has(socket.id)) socketToPlayer.set(socket.id, clientId);
+
+    if (gameState !== 'PLAYING') {
+      return socket.emit('game:finished', {
+        leaderboard: getLeaderboard()
+      });
+    }
 
     const stage = STAGES.find(s => s.id === stageId);
     if (!stage) return;
@@ -356,9 +367,17 @@ io.on('connection', (socket) => {
     if (!question) return;
 
     if (player.answeredQuestions[questionId]) {
+      const prev = player.answeredQuestions[questionId];
       return socket.emit('player:answer_result', {
         questionId,
-        alreadyAnswered: true
+        alreadyAnswered: true,
+        isCorrect: prev.isCorrect,
+        correctIndex: question.correct,
+        explanation: question.explanation,
+        pointsEarned: prev.pointsEarned || 0,
+        currentScore: player.score,
+        streak: player.streak,
+        triggerEnrage: false
       });
     }
 
@@ -415,10 +434,11 @@ io.on('connection', (socket) => {
   });
 
   // Qua tầng kế tiếp sau khi tiêu diệt Boss
-  socket.on('player:advance_stage', ({ fromStage, bossKillBonus }) => {
-    const playerId = socketToPlayer.get(socket.id);
-    const player = players.get(playerId);
+  socket.on('player:advance_stage', ({ fromStage, bossKillBonus, clientId }) => {
+    let playerId = socketToPlayer.get(socket.id) || clientId;
+    let player = players.get(playerId);
     if (!player) return;
+    if (clientId && !socketToPlayer.has(socket.id)) socketToPlayer.set(socket.id, clientId);
 
     const bonus = Math.max(0, Math.min(bossKillBonus || 300, 500));
     player.score += bonus;
