@@ -106,6 +106,7 @@
   let waveEnergy = 0;
   let waveScoreEarned = 0;
   let enrageTimeLeft = 0;
+  let enrageEndsAt = 0;
   let screenShake = 0;
 
   const hero = {
@@ -282,7 +283,8 @@
     lobbyPlayerName.textContent = player.nickname;
 
     if (gameState === 'PLAYING') {
-      startPlaying();
+      // Reconnect giữa trận: giữ nguyên tiến trình đang chơi, không reset màn
+      if (!animFrameId) startPlaying();
     } else if (gameState === 'FINISHED') {
       showFinishScreen();
     } else {
@@ -655,15 +657,41 @@
   }
 
   // ==================== 60FPS MAIN GAME LOOP ====================
+  let lastLoopTick = Date.now();
   function gameLoop(now) {
-    const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+    // Luôn đặt lịch frame kế tiếp TRƯỚC để 1 lỗi bất kỳ không làm đông cứng game
+    animFrameId = requestAnimationFrame(gameLoop);
+    lastLoopTick = Date.now();
+    const dt = Math.max(0, Math.min(0.05, (now - lastFrameTime) / 1000));
     lastFrameTime = now;
 
-    updateArena(dt);
-    renderArena();
-
-    animFrameId = requestAnimationFrame(gameLoop);
+    try { updateArena(dt); } catch (err) { console.error('[updateArena]', err); }
+    try { renderArena(); } catch (err) { console.error('[renderArena]', err); }
   }
+
+  // Watchdog: vòng lặp bị dừng (lỗi / trình duyệt in-app TikTok, Zalo tạm dừng) -> tự khởi động lại
+  setInterval(() => {
+    if (!animFrameId || document.hidden) return;
+    if (Date.now() - lastLoopTick > 1500) {
+      try { cancelAnimationFrame(animFrameId); } catch (e) {}
+      lastFrameTime = performance.now();
+      animFrameId = requestAnimationFrame(gameLoop);
+    }
+    // Enrage quá hạn theo đồng hồ thực -> ép kết thúc
+    if (combatPhase === 'BOSS_ENRAGE' && enrageEndsAt && Date.now() > enrageEndsAt + 800) {
+      try { resolveEnrage(); } catch (e) { console.error(e); }
+    }
+  }, 1000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    if (!socket.connected) socket.connect();
+    if (animFrameId) {
+      try { cancelAnimationFrame(animFrameId); } catch (e) {}
+      lastFrameTime = performance.now();
+      animFrameId = requestAnimationFrame(gameLoop);
+    }
+  });
 
   function updateArena(dt) {
     if (hero.dashCd > 0) hero.dashCd = Math.max(0, hero.dashCd - dt);
@@ -738,27 +766,13 @@
         spawnWaveEnemy(stage);
       }
     } else if (combatPhase === 'BOSS_ENRAGE') {
-      enrageTimeLeft -= dt;
-      enrageTimerNum.textContent = Math.max(0, enrageTimeLeft).toFixed(1);
+      // Tính theo đồng hồ thực -> máy lag vẫn kết thúc đúng 6 giây
+      enrageTimeLeft = Math.max(0, (enrageEndsAt - Date.now()) / 1000);
+      enrageTimerNum.textContent = enrageTimeLeft.toFixed(1);
       updateBossBehavior(stage, dt, true);
 
       if (enrageTimeLeft <= 0) {
-        combatPhase = 'BOSS_ENRAGE_RESOLVED';
-        enrageBanner.style.display = 'none';
-        arenaWrapper.classList.remove('enrage-border');
-        enemyBullets = [];
-        boss.shields = Math.max(0, boss.shields - 1);
-        boss.hp = Math.max(35, boss.hp - 20);
-        window.soundFx.shieldBreak();
-        addFloatingText(boss.x, boss.y, 'SỐNG SÓT! KHIÊN NỨT VỠ!', '#34D399');
-        updateCombatHud();
-
-        if (currentQuestionIndex >= 2) {
-          startBossFinishPhase();
-        } else {
-          currentQuestionIndex++;
-          setTimeout(() => openBossQuizModal(), 650);
-        }
+        resolveEnrage();
       }
     } else if (combatPhase === 'BOSS_FINISH') {
       updateBossBehavior(stage, dt, false);
@@ -1353,10 +1367,32 @@
     } catch (e) {}
   });
 
+  function resolveEnrage() {
+    if (combatPhase !== 'BOSS_ENRAGE') return;
+    combatPhase = 'BOSS_ENRAGE_RESOLVED';
+    enrageEndsAt = 0;
+    enrageBanner.style.display = 'none';
+    arenaWrapper.classList.remove('enrage-border');
+    enemyBullets = [];
+    boss.shields = Math.max(0, boss.shields - 1);
+    boss.hp = Math.max(35, boss.hp - 20);
+    try { window.soundFx.shieldBreak(); } catch (e) {}
+    addFloatingText(boss.x, boss.y, 'SỐNG SÓT! KHIÊN NỨT VỠ!', '#34D399');
+    updateCombatHud();
+
+    if (currentQuestionIndex >= 2) {
+      startBossFinishPhase();
+    } else {
+      currentQuestionIndex++;
+      setTimeout(() => openBossQuizModal(), 650);
+    }
+  }
+
   function startBossEnragePhase() {
     combatPhase = 'BOSS_ENRAGE';
-    window.soundFx.setMusic('enrage', currentStageIndex);
+    try { window.soundFx.setMusic('enrage', currentStageIndex); } catch (e) {}
     enrageTimeLeft = 6.0;
+    enrageEndsAt = Date.now() + 6000;
     enrageBanner.style.display = 'block';
     arenaWrapper.classList.add('enrage-border');
     hero.invulnTimer = 0.8;
@@ -1444,6 +1480,9 @@
   }
 
   function renderArena() {
+    if (enemyBullets.length > 160) enemyBullets.splice(0, enemyBullets.length - 160);
+    if (particles.length > 220) particles.splice(0, particles.length - 220);
+    if (floatingTexts.length > 12) floatingTexts.splice(0, floatingTexts.length - 12);
     if (window.ArenaGfx) {
       window.ArenaGfx.render(ctx, {
         W, H, hero, boss, enemies, playerBullets, enemyBullets, orbs, particles,
